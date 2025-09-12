@@ -35,7 +35,7 @@ Built with **Azure OpenAI GPT-5**, **LangChain**, **FAISS**, and **FastAPI**.
 
 ```mermaid
 flowchart TD
-    A[User Query (Frontend)] -->|POST /generate_post| B[FastAPI Backend]
+    A[User Query (Frontend)] --> B[FastAPI Backend]
 
     B --> C[LangChain Memory (Client History)]
     C --> D[Azure OpenAI Embeddings]
@@ -48,4 +48,4 @@ flowchart TD
     H --> I[LangChain Memory Update]
     I --> J[Backend JSON Response]
 
-    J -->|Return JSON| K[Frontend Displays LinkedIn Post]
+    J --> K[Frontend Displays LinkedIn Post]
