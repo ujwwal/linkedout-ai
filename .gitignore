@@ -26,7 +26,8 @@ var/
 *.db
 *.sqlite
 *.sqlite3
-
+/linkedin_content.csv
+linkedin_content.csv
 # FAISS index files
 data/faiss_index/
 
