@@ -1,18 +1,18 @@
 import os
 import pandas as pd
-from langchain.vectorstores import FAISS
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
 from langchain.docstore.document import Document
+from langchain_openai import AzureOpenAIEmbeddings
 from ..core.config import settings
+from pydantic import SecretStr
 
 class VectorStoreService:
     def __init__(self):
-        self.embeddings = OpenAIEmbeddings(
-            deployment=settings.AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME,
-            openai_api_key=settings.AZURE_OPENAI_API_KEY,
-            openai_api_base=settings.AZURE_OPENAI_ENDPOINT,
-            openai_api_type="azure",
-            openai_api_version=settings.AZURE_OPENAI_API_VERSION
+        self.embeddings = AzureOpenAIEmbeddings(
+            azure_deployment=settings.AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME,
+            api_key=SecretStr(settings.AZURE_OPENAI_API_KEY),
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
+            api_version=settings.AZURE_OPENAI_API_VERSION,
         )
         self.vector_store = self._load_or_create_vector_store()
     
@@ -26,8 +26,17 @@ class VectorStoreService:
 
     def load_posts_from_csv(self, csv_path):
         df = pd.read_csv(csv_path)
-        documents = [Document(page_content=row['content'], metadata=row.to_dict()) 
-                     for _, row in df.iterrows()]
+        # Determine which column contains the post content
+        content_col_candidates = ["content", "post_content", "text", "body"]
+        content_col = next((c for c in content_col_candidates if c in df.columns), None)
+        if content_col is None:
+            raise ValueError(
+                f"CSV must contain one of the content columns: {content_col_candidates}. Found: {list(df.columns)}"
+            )
+        documents = [
+            Document(page_content=str(row[content_col]), metadata=row.to_dict())
+            for _, row in df.iterrows()
+        ]
         self.vector_store = FAISS.from_documents(documents, self.embeddings)
         self.vector_store.save_local(settings.FAISS_INDEX_PATH)
 
