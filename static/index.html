@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Post Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #0077b5; /* LinkedIn blue */
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            background-color: #f3f2ef;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #0077b5;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #005582;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+        }
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+        .post {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #0077b5;
+        }
+        .post-content {
+            white-space: pre-wrap;
+        }
+        .choose-btn {
+            margin-top: 10px;
+            background-color: #5cbb5c;
+        }
+        .choose-btn:hover {
+            background-color: #4a994a;
+        }
+        .client-section {
+            margin-top: 30px;
+            display: none;
+        }
+        .client-list {
+            margin-top: 15px;
+        }
+        .client-item {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+        .client-item:hover {
+            background-color: #f0f0f0;
+        }
+        .active-client {
+            border-left: 4px solid #0077b5;
+        }
+        .similar-posts {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #eff7ff;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .similar-post-item {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .error-message {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>LinkedIn Post Generator</h1>
+    
+    <div class="container">
+        <div class="form-group">
+            <label for="user-id">User ID</label>
+            <input type="text" id="user-id" placeholder="Enter your user ID" value="test-user-1">
+        </div>
+        
+        <div class="form-group">
+            <label for="user-type">User Type</label>
+            <select id="user-type">
+                <option value="beginner">Beginner</option>
+                <option value="normal">Normal</option>
+                <option value="pro">Pro</option>
+                <option value="copywriter">Copywriter</option>
+            </select>
+        </div>
+        
+        <div class="form-group client-section">
+            <label for="client-selection">Select Client</label>
+            <div class="client-list" id="client-list">
+                <!-- Client items will be populated here -->
+            </div>
+            
+            <div class="form-group" style="margin-top: 15px;">
+                <label for="new-client">Add New Client</label>
+                <input type="text" id="new-client-name" placeholder="Client Name">
+                <input type="text" id="new-client-industry" placeholder="Industry (optional)" style="margin-top: 5px;">
+                <button id="add-client-btn" style="margin-top: 5px;">Add Client</button>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="post-query">What would you like to post about?</label>
+            <textarea id="post-query" placeholder="Enter your post idea, topic, or request..."></textarea>
+        </div>
+        
+        <button id="generate-btn">Generate LinkedIn Post</button>
+        
+        <div class="loading" id="loading">
+            <p>Generating your LinkedIn post...</p>
+        </div>
+        
+        <div class="error-message" id="error-message"></div>
+        
+        <div class="results" id="results">
+            <h2>Generated Posts</h2>
+            <div id="posts-container">
+                <!-- Generated posts will be displayed here -->
+            </div>
+            
+            <div class="similar-posts" id="similar-posts">
+                <h3>Similar Posts Used for Inspiration</h3>
+                <div id="similar-posts-container">
+                    <!-- Similar posts will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API base URL - change this to match your server
+        const API_BASE_URL = 'http://localhost:8000';
+        let selectedClientId = null;
+        
+        // DOM elements
+        const userIdInput = document.getElementById('user-id');
+        const userTypeSelect = document.getElementById('user-type');
+        const postQueryTextarea = document.getElementById('post-query');
+        const generateBtn = document.getElementById('generate-btn');
+        const loadingDiv = document.getElementById('loading');
+        const resultsDiv = document.getElementById('results');
+        const postsContainer = document.getElementById('posts-container');
+        const similarPostsDiv = document.getElementById('similar-posts');
+        const similarPostsContainer = document.getElementById('similar-posts-container');
+        const clientSection = document.querySelector('.client-section');
+        const clientList = document.getElementById('client-list');
+        const newClientNameInput = document.getElementById('new-client-name');
+        const newClientIndustryInput = document.getElementById('new-client-industry');
+        const addClientBtn = document.getElementById('add-client-btn');
+        const errorMessageDiv = document.getElementById('error-message');
+        
+        // Show client section only for copywriters
+        userTypeSelect.addEventListener('change', function() {
+            if (this.value === 'copywriter') {
+                clientSection.style.display = 'block';
+                loadClients();
+            } else {
+                clientSection.style.display = 'none';
+                selectedClientId = null;
+            }
+        });
+        
+        // Load clients for a user
+        function loadClients() {
+            const userId = userIdInput.value;
+            if (!userId) return;
+            
+            fetch(`${API_BASE_URL}/clients/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    renderClients(data.clients);
+                })
+                .catch(error => {
+                    console.error('Error loading clients:', error);
+                    showError('Failed to load clients. Please try again.');
+                });
+        }
+        
+        // Render client list
+        function renderClients(clients) {
+            clientList.innerHTML = '';
+            
+            if (clients.length === 0) {
+                clientList.innerHTML = '<p>No clients yet. Add your first client below.</p>';
+                return;
+            }
+            
+            clients.forEach(client => {
+                const clientItem = document.createElement('div');
+                clientItem.classList.add('client-item');
+                clientItem.textContent = client.name + (client.industry ? ` (${client.industry})` : '');
+                clientItem.dataset.clientId = client.client_id;
+                
+                clientItem.addEventListener('click', function() {
+                    // Remove active class from all clients
+                    document.querySelectorAll('.client-item').forEach(item => {
+                        item.classList.remove('active-client');
+                    });
+                    
+                    // Add active class to selected client
+                    this.classList.add('active-client');
+                    selectedClientId = this.dataset.clientId;
+                });
+                
+                clientList.appendChild(clientItem);
+            });
+        }
+        
+        // Add new client
+        addClientBtn.addEventListener('click', function() {
+            const userId = userIdInput.value;
+            const name = newClientNameInput.value;
+            const industry = newClientIndustryInput.value;
+            
+            if (!userId || !name) {
+                showError('User ID and client name are required.');
+                return;
+            }
+            
+            const queryParams = new URLSearchParams({
+                user_id: userId,
+                name: name,
+                industry: industry || ''
+            });
+            
+            fetch(`${API_BASE_URL}/clients?${queryParams}`, {
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    renderClients(data.clients);
+                    newClientNameInput.value = '';
+                    newClientIndustryInput.value = '';
+                })
+                .catch(error => {
+                    console.error('Error adding client:', error);
+                    showError('Failed to add client. Please try again.');
+                });
+        });
+        
+        // Generate post
+        generateBtn.addEventListener('click', function() {
+            const userId = userIdInput.value;
+            const query = postQueryTextarea.value;
+            
+            if (!userId || !query) {
+                showError('User ID and post query are required.');
+                return;
+            }
+            
+            // Update user type in database first
+            // Note: In a real app, this would be a separate endpoint
+            // but we're updating it here for simplicity
+            
+            // Show loading indicator
+            loadingDiv.style.display = 'block';
+            resultsDiv.style.display = 'none';
+            errorMessageDiv.style.display = 'none';
+            
+            // Prepare request body
+            const requestBody = {
+                user_id: userId,
+                query: query
+            };
+            
+            // Add client_id if a client is selected
+            if (selectedClientId) {
+                requestBody.client_id = selectedClientId;
+            }
+            
+            // Call API to generate post
+            fetch(`${API_BASE_URL}/generate_post`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to generate post');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    renderResults(data);
+                    loadingDiv.style.display = 'none';
+                    resultsDiv.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error generating post:', error);
+                    loadingDiv.style.display = 'none';
+                    showError('Failed to generate post. Please try again or check the server logs.');
+                });
+        });
+        
+        // Render results
+        function renderResults(data) {
+            postsContainer.innerHTML = '';
+            
+            if (data.posts.length === 0) {
+                postsContainer.innerHTML = '<p>No posts generated. Please try again.</p>';
+                return;
+            }
+            
+            data.posts.forEach((post, index) => {
+                const postDiv = document.createElement('div');
+                postDiv.classList.add('post');
+                
+                const postContent = document.createElement('div');
+                postContent.classList.add('post-content');
+                postContent.textContent = post.content;
+                
+                const chooseBtn = document.createElement('button');
+                chooseBtn.classList.add('choose-btn');
+                chooseBtn.textContent = 'Choose This Post';
+                chooseBtn.addEventListener('click', function() {
+                    saveChoice(post.post_id, index);
+                });
+                
+                postDiv.appendChild(postContent);
+                postDiv.appendChild(chooseBtn);
+                postsContainer.appendChild(postDiv);
+            });
+            
+            // Display similar posts if available
+            if (data.similar_posts && data.similar_posts.length > 0) {
+                similarPostsDiv.style.display = 'block';
+                similarPostsContainer.innerHTML = '';
+                
+                data.similar_posts.forEach((post, index) => {
+                    const postDiv = document.createElement('div');
+                    postDiv.classList.add('similar-post-item');
+                    postDiv.textContent = post;
+                    similarPostsContainer.appendChild(postDiv);
+                });
+            } else {
+                similarPostsDiv.style.display = 'none';
+            }
+        }
+        
+        // Save choice
+        function saveChoice(postId, chosenIndex) {
+            const userId = userIdInput.value;
+            
+            const requestBody = {
+                user_id: userId,
+                post_id: postId,
+                chosen_index: chosenIndex,
+                client_id: selectedClientId
+            };
+            
+            fetch(`${API_BASE_URL}/save_choice`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Post choice saved successfully!');
+                })
+                .catch(error => {
+                    console.error('Error saving choice:', error);
+                    showError('Failed to save your choice. Please try again.');
+                });
+        }
+        
+        // Show error message
+        function showError(message) {
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.style.display = 'block';
+        }
+        
+        // Initialize with default user type
+        if (userTypeSelect.value === 'copywriter') {
+            clientSection.style.display = 'block';
+            loadClients();
+        }
+    </script>
+</body>
+</html>
