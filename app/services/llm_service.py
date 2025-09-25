@@ -102,7 +102,7 @@ Follow these guidelines:
         
         # Combine all context elements
         full_context = system_prompt
-        d
+        
         if client_history:
             full_context += "\n\nPREVIOUS INTERACTIONS WITH THIS USER:\n" + client_history
             
