@@ -30,3 +30,14 @@ app.include_router(router, tags=["posts"])
 @app.get("/")
 def root():
     return {"message": "Welcome to LinkedIn Post Generator API"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+    )
